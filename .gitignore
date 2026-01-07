@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Rust build
+src-tauri/target/
+
+# Tauri generated
+src-tauri/Cargo.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# Build output
+dist/
+
+# Claude
+.claude/
