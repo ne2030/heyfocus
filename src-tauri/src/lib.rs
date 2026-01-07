@@ -3,6 +3,11 @@ use std::sync::Mutex;
 use tauri::{Manager, State};
 use tauri_plugin_store::StoreExt;
 
+// Use different store path for debug vs release builds
+#[cfg(debug_assertions)]
+const STORE_PATH: &str = "heyfocus_data_dev.json";
+
+#[cfg(not(debug_assertions))]
 const STORE_PATH: &str = "heyfocus_data.json";
 const SNAPSHOT_INTERVAL: usize = 10; // Create snapshot every 10 operations
 
@@ -182,6 +187,30 @@ fn set_focus(id: u64, state: State<AppState>, app: tauri::AppHandle) -> Result<A
 }
 
 #[tauri::command]
+fn clear_focus(state: State<AppState>, app: tauri::AppHandle) -> Result<AppData, String> {
+    let mut data = state.0.lock().unwrap();
+
+    // Find current focused task
+    let focused_task = data.tasks.iter().find(|t| t.is_focus);
+    if focused_task.is_none() {
+        return Ok(data.clone()); // No focused task, nothing to do
+    }
+
+    let focused_id = focused_task.map(|t| t.id);
+    let focused_text = focused_task.map(|t| t.text.clone()).unwrap_or_default();
+
+    // Clear focus from all tasks
+    for task in &mut data.tasks {
+        task.is_focus = false;
+    }
+
+    add_log_extended(&mut data, "CLEAR_FOCUS", &focused_text, focused_id, None, None, Some(true), None);
+
+    save_to_store(&app, &data);
+    Ok(data.clone())
+}
+
+#[tauri::command]
 fn complete_task(id: u64, state: State<AppState>, app: tauri::AppHandle) -> Result<AppData, String> {
     let mut data = state.0.lock().unwrap();
 
@@ -338,6 +367,14 @@ fn undo_action(state: State<AppState>, app: tauri::AppHandle) -> Result<AppData,
                 }
             }
         }
+        "CLEAR_FOCUS" => {
+            // Restore focus to the task that was unfocused
+            if let Some(id) = last_log.task_id {
+                for task in &mut data.tasks {
+                    task.is_focus = task.id == id;
+                }
+            }
+        }
         _ => {}
     }
 
@@ -419,6 +456,7 @@ pub fn run() {
             add_task,
             move_task,
             set_focus,
+            clear_focus,
             complete_task,
             delete_task,
             toggle_always_on_top,
