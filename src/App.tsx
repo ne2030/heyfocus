@@ -4,6 +4,7 @@ import { useAppStore } from './store/useAppStore'
 import { onSettingsMessage } from './lib/broadcast'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useWindowResize } from './hooks/useWindowResize'
+import { useWindowFocus } from './hooks/useWindowFocus'
 import { Header } from './components/sections/Header'
 import { ActiveSection } from './components/sections/ActiveSection'
 import { LaterSection } from './components/sections/LaterSection'
@@ -23,12 +24,13 @@ function App() {
 }
 
 function MainApp() {
-  const { isCompactMode, loadData, opacity } = useAppStore()
+  const { isCompactMode, loadData, opacity, setSelectedTask } = useAppStore()
   const mainRef = useRef<HTMLElement>(null)
 
   // Custom hooks
   useKeyboardShortcuts()
   useWindowResize(mainRef)
+  const isWindowFocused = useWindowFocus()
 
   useEffect(() => {
     // Load initial data
@@ -49,7 +51,7 @@ function MainApp() {
   }, [])
 
   return (
-    <div className={cn('app', isCompactMode && 'compact')}>
+    <div className={cn('app', isCompactMode && 'compact', isWindowFocused && 'window-focused')} onClick={() => setSelectedTask(null)}>
       <Header />
 
       <main className="main" ref={mainRef}>

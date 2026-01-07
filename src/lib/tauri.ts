@@ -23,6 +23,8 @@ export const tauriApi = {
 
   undoAction: () => invoke<AppData>('undo_action'),
 
+  clearLogs: () => invoke<AppData>('clear_logs'),
+
   toggleAlwaysOnTop: (enabled: boolean) =>
     invoke<void>('toggle_always_on_top', { enabled }),
 

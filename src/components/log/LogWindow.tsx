@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { formatTime } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
@@ -6,7 +6,8 @@ import { onSettingsMessage } from '../../lib/broadcast'
 import type { LogEventType } from '../../types'
 
 export function LogWindow() {
-  const { logs, loadData } = useAppStore()
+  const { logs, loadData, clearLogs } = useAppStore()
+  const [showConfirm, setShowConfirm] = useState(false)
 
   // Calculate stats
   const completedCount = logs.filter((l) => l.event === 'TASK_DONE').length
@@ -44,6 +45,14 @@ export function LogWindow() {
             <span className="stat-pill">
               <span className="stat-num">{switchCount}</span> switches
             </span>
+            {logs.length > 0 && (
+              <button
+                className="clear-logs-btn"
+                onClick={() => setShowConfirm(true)}
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
         <div className="activity-log">
@@ -62,6 +71,32 @@ export function LogWindow() {
           )}
         </div>
       </div>
+
+      {showConfirm && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p>Clear all logs?</p>
+            <div className="confirm-actions">
+              <button
+                className="confirm-btn cancel"
+                onClick={() => setShowConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-btn confirm"
+                onClick={() => {
+                  clearLogs()
+                  setShowConfirm(false)
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="esc-hint">
         <kbd>ESC</kbd> to close
       </div>

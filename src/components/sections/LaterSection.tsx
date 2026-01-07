@@ -1,3 +1,4 @@
+import { useState, DragEvent } from 'react'
 import { cn } from '../../lib/utils'
 import { ChevronRightIcon } from '../ui/Icons'
 import { TaskList } from '../task/TaskList'
@@ -7,6 +8,36 @@ export function LaterSection() {
   const laterTasks = useAppStore((state) => state.laterTasks())
   const isLaterExpanded = useAppStore((state) => state.isLaterExpanded)
   const toggleLaterSection = useAppStore((state) => state.toggleLaterSection)
+  const draggedTaskId = useAppStore((state) => state.draggedTaskId)
+  const moveTask = useAppStore((state) => state.moveTask)
+  const setDraggedTask = useAppStore((state) => state.setDraggedTask)
+
+  const [isHeaderDragOver, setIsHeaderDragOver] = useState(false)
+
+  const handleHeaderDragOver = (e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggedTaskId !== null) {
+      setIsHeaderDragOver(true)
+      e.dataTransfer.dropEffect = 'move'
+    }
+  }
+
+  const handleHeaderDragLeave = (e: DragEvent) => {
+    e.preventDefault()
+    setIsHeaderDragOver(false)
+  }
+
+  const handleHeaderDrop = async (e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const taskId = parseInt(e.dataTransfer.getData('text/plain'))
+    if (!isNaN(taskId)) {
+      await moveTask(taskId, 'later')
+    }
+    setIsHeaderDragOver(false)
+    setDraggedTask(null)
+  }
 
   return (
     <section
@@ -16,7 +47,13 @@ export function LaterSection() {
       )}
       data-status="later"
     >
-      <div className="later-header" onClick={toggleLaterSection}>
+      <div
+        className={cn('later-header', isHeaderDragOver && 'drag-over')}
+        onClick={toggleLaterSection}
+        onDragOver={handleHeaderDragOver}
+        onDragLeave={handleHeaderDragLeave}
+        onDrop={handleHeaderDrop}
+      >
         <div className="later-toggle">
           <ChevronRightIcon />
           <span className="section-title">Later</span>

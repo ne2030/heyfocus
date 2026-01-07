@@ -17,7 +17,9 @@ export function TaskItem({ task, index, onDragStart, onDragEnd }: TaskItemProps)
     editingTaskId,
     draggedTaskId,
     setEditingTask,
+    setSelectedTask,
     setFocus,
+    clearFocus,
     completeTask,
     deleteTask,
     editTask,
@@ -46,7 +48,11 @@ export function TaskItem({ task, index, onDragStart, onDragEnd }: TaskItemProps)
   const handleIndicatorClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (task.status === 'active') {
-      setFocus(task.id)
+      if (task.isFocus) {
+        clearFocus()
+      } else {
+        setFocus(task.id)
+      }
     }
   }
 
@@ -96,9 +102,19 @@ export function TaskItem({ task, index, onDragStart, onDragEnd }: TaskItemProps)
       }}
       onMouseEnter={() => !isAnyDragging && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation()
+        // Cmd+click (Mac) or Ctrl+click (Win) for selection
+        if (e.metaKey || e.ctrlKey) {
+          setSelectedTask(isSelected ? null : task.id)
+          return
+        }
         if (task.status === 'active') {
-          setFocus(task.id)
+          if (task.isFocus) {
+            clearFocus()
+          } else {
+            setFocus(task.id)
+          }
         }
       }}
       onDoubleClick={handleDoubleClick}

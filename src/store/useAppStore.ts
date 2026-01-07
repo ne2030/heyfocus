@@ -5,9 +5,14 @@ import type { AppData, Task, LogEntry, TaskStatus } from '../types'
 
 const OPACITY_KEY = 'heyfocus_opacity'
 
+// Toast timeout management
+let toastTimeoutId: number | null = null
+
+type ToastType = 'success' | 'error' | 'focus' | 'delete'
+
 interface ToastState {
   message: string
-  isError: boolean
+  type: ToastType
   visible: boolean
 }
 
@@ -43,6 +48,7 @@ interface AppState {
   deleteTask: (id: number) => Promise<void>
   editTask: (id: number, text: string) => Promise<void>
   undoAction: () => Promise<void>
+  clearLogs: () => Promise<void>
 
   // UI actions
   setAlwaysOnTop: (enabled: boolean) => Promise<void>
@@ -53,7 +59,7 @@ interface AppState {
   toggleLogOverlay: () => void
   toggleLaterSection: () => void
   setOpacity: (value: number) => void
-  showToast: (message: string, isError?: boolean) => void
+  showToast: (message: string, type?: ToastType) => void
   hideToast: () => void
 
   // Sync state from external source
@@ -73,7 +79,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLogOverlayVisible: false,
   isLaterExpanded: false,
   opacity: parseInt(localStorage.getItem(OPACITY_KEY) || '100'),
-  toast: { message: '', isError: false, visible: false },
+  toast: { message: '', type: 'success' as ToastType, visible: false },
 
   // Computed getters
   activeTasks: () => get().tasks.filter((t) => t.status === 'active'),
@@ -91,7 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
     } catch (error) {
       console.error('Failed to load data:', error)
-      get().showToast('Failed to load data', true)
+      get().showToast('Failed to load data', 'error')
     }
   },
 
@@ -112,11 +118,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       broadcastDataUpdate()
 
       if (status === 'later') {
-        get().showToast('Added to Later (Active is full)')
+        get().showToast('Added to Later')
       }
     } catch (error) {
       console.error('Failed to add task:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -132,12 +138,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       broadcastDataUpdate()
     } catch (error) {
       console.error('Failed to move task:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
   setFocus: async (id: number) => {
     try {
+      const task = get().tasks.find((t) => t.id === id)
       const data = await tauriApi.setFocus(id)
       set({
         tasks: data.tasks,
@@ -145,9 +152,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         nextId: data.next_id,
       })
       broadcastDataUpdate()
+      if (task) {
+        const truncated = task.text.length > 20 ? task.text.slice(0, 20) + '…' : task.text
+        get().showToast(`Focus: ${truncated}`, 'focus')
+      }
     } catch (error) {
       console.error('Failed to set focus:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -162,7 +173,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       broadcastDataUpdate()
     } catch (error) {
       console.error('Failed to clear focus:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -180,7 +191,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().showToast('Task completed!')
     } catch (error) {
       console.error('Failed to complete task:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -195,9 +206,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedTaskId: selectedTaskId === id ? null : selectedTaskId,
       })
       broadcastDataUpdate()
+      get().showToast('Task deleted', 'delete')
     } catch (error) {
       console.error('Failed to delete task:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -216,7 +228,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       broadcastDataUpdate()
     } catch (error) {
       console.error('Failed to edit task:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -232,7 +244,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().showToast('Undo successful')
     } catch (error) {
       console.error('Failed to undo:', error)
-      get().showToast(String(error), true)
+      get().showToast(String(error), 'error')
+    }
+  },
+
+  clearLogs: async () => {
+    try {
+      const data = await tauriApi.clearLogs()
+      set({
+        tasks: data.tasks,
+        logs: data.logs,
+        nextId: data.next_id,
+      })
+      broadcastDataUpdate()
+    } catch (error) {
+      console.error('Failed to clear logs:', error)
+      get().showToast(String(error), 'error')
     }
   },
 
@@ -278,15 +305,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     broadcastOpacity(clamped)
   },
 
-  showToast: (message: string, isError = false) => {
-    set({ toast: { message, isError, visible: true } })
-    setTimeout(() => {
+  showToast: (message: string, type: ToastType = 'success') => {
+    // Clear existing timer
+    if (toastTimeoutId) {
+      clearTimeout(toastTimeoutId)
+    }
+
+    set({ toast: { message, type, visible: true } })
+
+    toastTimeoutId = window.setTimeout(() => {
       get().hideToast()
+      toastTimeoutId = null
     }, 2000)
   },
 
   hideToast: () => {
-    set({ toast: { message: '', isError: false, visible: false } })
+    // Only set visible to false, keep type to prevent color flash
+    set((state) => ({ toast: { ...state.toast, visible: false } }))
   },
 
   syncState: (data: AppData) => {

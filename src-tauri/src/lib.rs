@@ -60,6 +60,22 @@ fn get_timestamp() -> String {
     chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string()
 }
 
+fn is_within_seconds(time_str: &str, seconds: i64) -> bool {
+    use chrono::NaiveDateTime;
+    if let Ok(log_time) = NaiveDateTime::parse_from_str(time_str, "%Y-%m-%dT%H:%M:%S") {
+        let now = chrono::Local::now().naive_local();
+        let duration = now.signed_duration_since(log_time);
+        duration.num_seconds() < seconds
+    } else {
+        false
+    }
+}
+
+fn get_today_log_key() -> String {
+    let today = chrono::Local::now().format("%Y-%m-%d");
+    format!("logs_{}", today)
+}
+
 fn add_log_extended(
     data: &mut AppData,
     event: &str,
@@ -180,7 +196,22 @@ fn set_focus(id: u64, state: State<AppState>, app: tauri::AppHandle) -> Result<A
         task.is_focus = task.id == id;
     }
 
-    add_log_extended(&mut data, "SWITCH_FOCUS", &task_text, Some(id), None, None, None, prev_focused_id);
+    // Check if last log is SWITCH_FOCUS within 30 seconds - merge if so
+    let should_merge = data.logs.last()
+        .map(|log| log.event == "SWITCH_FOCUS" && is_within_seconds(&log.time, 30))
+        .unwrap_or(false);
+
+    if should_merge {
+        // Update the existing log instead of creating a new one
+        if let Some(last_log) = data.logs.last_mut() {
+            last_log.task = task_text;
+            last_log.task_id = Some(id);
+            last_log.time = get_timestamp();
+            // Keep the original prev_focus_id (the original starting point)
+        }
+    } else {
+        add_log_extended(&mut data, "SWITCH_FOCUS", &task_text, Some(id), None, None, None, prev_focused_id);
+    }
 
     save_to_store(&app, &data);
     Ok(data.clone())
@@ -204,7 +235,17 @@ fn clear_focus(state: State<AppState>, app: tauri::AppHandle) -> Result<AppData,
         task.is_focus = false;
     }
 
-    add_log_extended(&mut data, "CLEAR_FOCUS", &focused_text, focused_id, None, None, Some(true), None);
+    // Check if last log is SWITCH_FOCUS within 30 seconds - remove if so
+    let should_remove = data.logs.last()
+        .map(|log| log.event == "SWITCH_FOCUS" && is_within_seconds(&log.time, 30))
+        .unwrap_or(false);
+
+    if should_remove {
+        // Remove the short-lived focus log
+        data.logs.pop();
+    } else {
+        add_log_extended(&mut data, "CLEAR_FOCUS", &focused_text, focused_id, None, None, Some(true), None);
+    }
 
     save_to_store(&app, &data);
     Ok(data.clone())
@@ -383,6 +424,15 @@ fn undo_action(state: State<AppState>, app: tauri::AppHandle) -> Result<AppData,
 }
 
 #[tauri::command]
+fn clear_logs(state: State<AppState>, app: tauri::AppHandle) -> AppData {
+    let mut data = state.0.lock().unwrap();
+    data.logs.clear();
+    data.snapshots.clear();
+    save_to_store(&app, &data);
+    data.clone()
+}
+
+#[tauri::command]
 fn toggle_always_on_top(enabled: bool, app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         window.set_always_on_top(enabled).map_err(|e| e.to_string())?;
@@ -426,18 +476,56 @@ fn open_log_window(app: tauri::AppHandle) -> Result<(), String> {
 
 fn save_to_store(app: &tauri::AppHandle, data: &AppData) {
     if let Ok(store) = app.store(STORE_PATH) {
-        let _ = store.set("data", serde_json::to_value(data).unwrap_or_default());
+        // Save main data (tasks, next_id, snapshots) - without logs
+        let main_data = serde_json::json!({
+            "tasks": data.tasks,
+            "next_id": data.next_id,
+            "snapshots": data.snapshots,
+        });
+        let _ = store.set("data", main_data);
+
+        // Save logs to today's key
+        let log_key = get_today_log_key();
+        let _ = store.set(&log_key, serde_json::to_value(&data.logs).unwrap_or_default());
+
         let _ = store.save();
     }
 }
 
 fn load_from_store(app: &tauri::AppHandle) -> AppData {
     if let Ok(store) = app.store(STORE_PATH) {
+        let mut result = AppData::default();
+
+        // Load main data
         if let Some(value) = store.get("data") {
-            if let Ok(data) = serde_json::from_value::<AppData>(value.clone()) {
-                return data;
+            if let Ok(main) = serde_json::from_value::<serde_json::Value>(value.clone()) {
+                if let Some(tasks) = main.get("tasks") {
+                    if let Ok(t) = serde_json::from_value(tasks.clone()) {
+                        result.tasks = t;
+                    }
+                }
+                if let Some(next_id) = main.get("next_id") {
+                    if let Ok(n) = serde_json::from_value(next_id.clone()) {
+                        result.next_id = n;
+                    }
+                }
+                if let Some(snapshots) = main.get("snapshots") {
+                    if let Ok(s) = serde_json::from_value(snapshots.clone()) {
+                        result.snapshots = s;
+                    }
+                }
             }
         }
+
+        // Load today's logs only
+        let log_key = get_today_log_key();
+        if let Some(logs_value) = store.get(&log_key) {
+            if let Ok(logs) = serde_json::from_value(logs_value.clone()) {
+                result.logs = logs;
+            }
+        }
+
+        return result;
     }
     AppData::default()
 }
@@ -464,6 +552,7 @@ pub fn run() {
             edit_task,
             undo_action,
             open_log_window,
+            clear_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
