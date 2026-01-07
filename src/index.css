@@ -153,6 +153,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  -webkit-app-region: no-drag;
 }
 
 .main::-webkit-scrollbar {
@@ -282,12 +283,13 @@ body {
   }
 }
 
-.task-item:hover {
+/* Use JS-controlled .hovered class instead of :hover (WebKit bug workaround) */
+.task-item.hovered {
   background: rgb(36 36 36 / var(--bg-alpha));
 }
 
 @media (prefers-color-scheme: light) {
-  .task-item:hover {
+  .task-item.hovered {
     background: rgb(229 229 229 / var(--bg-alpha));
   }
 }
@@ -361,7 +363,7 @@ body {
   transition: opacity 0.15s ease;
 }
 
-.task-item:hover .task-actions {
+.task-item.hovered .task-actions {
   opacity: 1;
 }
 

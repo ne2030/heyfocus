@@ -24,11 +24,13 @@ export function TaskItem({ task, index, onDragStart, onDragEnd }: TaskItemProps)
   } = useAppStore()
 
   const [editText, setEditText] = useState(task.text)
+  const [isHovered, setIsHovered] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const isSelected = selectedTaskId === task.id
   const isEditing = editingTaskId === task.id
   const isDragging = draggedTaskId === task.id
+  const isAnyDragging = draggedTaskId !== null
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -81,13 +83,19 @@ export function TaskItem({ task, index, onDragStart, onDragEnd }: TaskItemProps)
         task.isFocus && 'focused',
         isSelected && 'selected',
         isDragging && 'dragging',
-        isEditing && 'editing'
+        isEditing && 'editing',
+        isHovered && !isAnyDragging && 'hovered'
       )}
       data-id={task.id}
       data-index={index}
       draggable={!isEditing}
       onDragStart={handleDragStart}
-      onDragEnd={onDragEnd}
+      onDragEnd={() => {
+        setIsHovered(false)
+        onDragEnd()
+      }}
+      onMouseEnter={() => !isAnyDragging && setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={() => {
         if (task.status === 'active') {
           setFocus(task.id)
