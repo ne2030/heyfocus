@@ -362,6 +362,31 @@ fn set_window_size(width: f64, height: f64, app: tauri::AppHandle) -> Result<(),
     Ok(())
 }
 
+#[tauri::command]
+fn open_log_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::WebviewWindowBuilder;
+
+    // Check if log window already exists
+    if app.get_webview_window("log").is_some() {
+        // Focus existing window
+        if let Some(window) = app.get_webview_window("log") {
+            window.set_focus().map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+
+    // Create new log window
+    WebviewWindowBuilder::new(&app, "log", tauri::WebviewUrl::App("index.html#log".into()))
+        .title("Activity Log")
+        .inner_size(400.0, 500.0)
+        .resizable(true)
+        .decorations(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 fn save_to_store(app: &tauri::AppHandle, data: &AppData) {
     if let Ok(store) = app.store(STORE_PATH) {
         let _ = store.set("data", serde_json::to_value(data).unwrap_or_default());
@@ -400,6 +425,7 @@ pub fn run() {
             set_window_size,
             edit_task,
             undo_action,
+            open_log_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -18,6 +18,7 @@
       --text-tertiary: #525252;
       --accent: #f97316;
       --accent-muted: rgba(249, 115, 22, 0.15);
+      --accent-muted-solid: #382416;
       --success: #22c55e;
       --danger: #ef4444;
       --border: rgba(255, 255, 255, 0.06);
@@ -35,6 +36,7 @@
         --text-primary: #0a0a0a;
         --text-secondary: #737373;
         --text-tertiary: #a3a3a3;
+        --accent-muted-solid: #fef3e8;
         --border: rgba(0, 0, 0, 0.06);
         --border-subtle: rgba(0, 0, 0, 0.03);
         --glow: 0 0 20px rgba(249, 115, 22, 0.2);
@@ -358,7 +360,7 @@
     }
 
     .task-item.focused {
-      background: var(--accent-muted);
+      background: var(--accent-muted-solid);
       border-color: var(--accent);
     }
 
@@ -712,6 +714,237 @@
       color: white;
     }
 
+    /* Settings Window (separate window mode) */
+    .settings-window {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 24px 0 0 0;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .settings-section {
+      padding: 0 24px;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+      margin: 20px 0;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .setting-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    .settings-window .opacity-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 140px;
+      height: 4px;
+      background: var(--bg-hover);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .settings-window .opacity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.5);
+      transition: box-shadow 0.15s ease;
+    }
+
+    .settings-window .opacity-slider::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.7);
+    }
+
+    .slider-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 40px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .activity-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding-bottom: 0;
+    }
+
+    .activity-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .activity-stats {
+      display: flex;
+      gap: 8px;
+    }
+
+    .stat-pill {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-pill .stat-num {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .activity-log {
+      flex: 1;
+      overflow-y: auto;
+      margin: 0 -24px;
+      padding: 0 24px;
+    }
+
+    .activity-log::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .activity-log::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .activity-log::-webkit-scrollbar-thumb {
+      background: var(--bg-hover);
+      border-radius: 3px;
+    }
+
+    .activity-log::-webkit-scrollbar-thumb:hover {
+      background: var(--text-tertiary);
+    }
+
+    .log-row {
+      display: grid;
+      grid-template-columns: 44px 80px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      align-items: center;
+    }
+
+    .log-row:last-child {
+      border-bottom: none;
+    }
+
+    .log-row .log-time {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .log-row .log-type {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 3px 6px;
+      border-radius: 3px;
+      text-align: center;
+    }
+
+    .log-row .log-type.TASK_DONE {
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+    }
+
+    .log-row .log-type.SWITCH_FOCUS {
+      background: rgba(249, 115, 22, 0.12);
+      color: var(--accent);
+    }
+
+    .log-row .log-type.TASK_ADDED {
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+    }
+
+    .log-row .log-type.TASK_DELETED,
+    .log-row .log-type.MOVE_TO_LATER {
+      background: rgba(107, 114, 128, 0.12);
+      color: #6b7280;
+    }
+
+    .log-row .log-type.MOVE_TO_ACTIVE {
+      background: rgba(168, 85, 247, 0.12);
+      color: #a855f7;
+    }
+
+    .log-row .log-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .log-empty {
+      text-align: center;
+      color: var(--text-tertiary);
+      padding: 48px 24px;
+      font-size: 12px;
+    }
+
+    .esc-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .esc-hint kbd {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      padding: 2px 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-tertiary);
+    }
+
     /* Later section - Grid-based collapse for gap handling */
     /* Later section - collapsed state */
     .section.later.collapsed {
@@ -797,13 +1030,8 @@
     }
 
     .app.compact .main {
-      padding: 8px;
+      padding: 8px 16px;
       gap: 8px;
-    }
-
-    /* Keep task-list background and styling in compact mode */
-    .app.compact .task-item {
-      background: var(--bg-elevated);
     }
 
     .icon-btn.compact-active {
@@ -907,6 +1135,15 @@
         <div class="log-header">
           <span class="log-title">Settings</span>
           <div class="log-actions">
+            <button class="icon-btn" id="openLogWindowBtn" title="Open Activity Log">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M16 13H8"/>
+                <path d="M16 17H8"/>
+                <path d="M10 9H8"/>
+              </svg>
+            </button>
             <button class="icon-btn" id="closeLogBtn" title="Close">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 6 6 18M6 6l12 12"/>

@@ -2,6 +2,9 @@
 
 const { invoke } = window.__TAURI__.core;
 
+// BroadcastChannel for cross-window communication
+const settingsChannel = new BroadcastChannel('heyfocus-settings');
+
 // State
 let appData = { tasks: [], logs: [], next_id: 0 };
 let isAlwaysOnTop = false;
@@ -33,17 +36,133 @@ const toast = document.getElementById('toast');
 const opacityValue = document.getElementById('opacityValue');
 const compactBtn = document.getElementById('compactBtn');
 
+// Check if this is the log window
+const isLogWindow = window.location.hash === '#log';
+
 // Initialize app
 async function init() {
   try {
     appData = await invoke('load_data');
-    render();
-    setupEventListeners();
-    setupResizeObserver();
+
+    if (isLogWindow) {
+      // Settings window mode
+      initLogWindow();
+    } else {
+      // Main window mode
+      render();
+      setupEventListeners();
+      setupResizeObserver();
+
+      // Listen for opacity changes from settings window
+      settingsChannel.onmessage = (e) => {
+        if (e.data.type === 'opacity') {
+          const value = e.data.value;
+          document.documentElement.style.setProperty('--bg-alpha', value / 100);
+          opacitySlider.value = value;
+          opacityValue.textContent = value + '%';
+        }
+      };
+    }
   } catch (error) {
     console.error('Failed to initialize:', error);
     showToast('Failed to load data', true);
   }
+}
+
+// Initialize log window (separate window)
+function initLogWindow() {
+  const app = document.querySelector('.app');
+
+  app.innerHTML = `
+    <div class="settings-window">
+      <section class="settings-section activity-section" style="padding-top: 16px;">
+        <div class="activity-header">
+          <div class="activity-stats">
+            <span class="stat-pill"><span class="stat-num" id="logStatCompleted">0</span> done</span>
+            <span class="stat-pill"><span class="stat-num" id="logStatSwitches">0</span> switches</span>
+            <span class="stat-pill"><span class="stat-num" id="logStatTotal">0</span> events</span>
+          </div>
+        </div>
+        <div class="activity-log" id="activityLog"></div>
+      </section>
+
+      <div class="esc-hint">
+        <kbd>ESC</kbd> to close
+      </div>
+    </div>
+  `;
+
+  // Render logs
+  renderSettingsLogs();
+
+  // ESC to close window (use e.code for language-independent handling)
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' || e.key === 'Escape') {
+      window.close();
+    }
+  });
+
+  // Refresh logs periodically
+  setInterval(async () => {
+    try {
+      appData = await invoke('load_data');
+      renderSettingsLogs();
+    } catch (e) {
+      console.error('Failed to refresh logs:', e);
+    }
+  }, 2000);
+}
+
+function renderSettingsLogs() {
+  const logs = appData.logs;
+  const content = document.getElementById('activityLog');
+  const statCompleted = document.getElementById('logStatCompleted');
+  const statSwitches = document.getElementById('logStatSwitches');
+  const statTotal = document.getElementById('logStatTotal');
+
+  if (!content) return;
+
+  // Update stats
+  const completed = logs.filter(l => l.event === 'TASK_DONE').length;
+  const switches = logs.filter(l => l.event === 'SWITCH_FOCUS').length;
+
+  statCompleted.textContent = completed;
+  statSwitches.textContent = switches;
+  if (statTotal) statTotal.textContent = logs.length;
+
+  // Render log entries (newest first)
+  const reversedLogs = [...logs].reverse();
+  content.innerHTML = reversedLogs.length > 0
+    ? reversedLogs.map(log => `
+        <div class="log-row">
+          <span class="log-time">${formatTimeShort(log.time)}</span>
+          <span class="log-type ${log.event}">${formatEventShort(log.event)}</span>
+          <span class="log-text">${escapeHTML(log.task)}</span>
+        </div>
+      `).join('')
+    : '<div class="log-empty">No activity yet</div>';
+}
+
+function formatTimeShort(timeStr) {
+  if (!timeStr) return '--:--';
+  const date = new Date(timeStr);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
+function formatEventShort(event) {
+  const map = {
+    'TASK_DONE': 'DONE',
+    'SWITCH_FOCUS': 'SWITCH',
+    'TASK_ADDED': 'ADD',
+    'TASK_DELETED': 'DEL',
+    'MOVE_TO_LATER': 'LATER',
+    'MOVE_TO_ACTIVE': 'ACTIVE'
+  };
+  return map[event] || event;
 }
 
 // Render the UI
@@ -66,9 +185,6 @@ function renderTasks() {
   laterList.innerHTML = laterTasks.length === 0
     ? '<div class="task-list-empty">Drop tasks here for later</div>'
     : laterTasks.map(task => createTaskHTML(task, false)).join('');
-
-  // Setup drag listeners for all task items
-  setupDragListeners();
 }
 
 function createTaskHTML(task, isActive) {
@@ -169,6 +285,9 @@ function setupEventListeners() {
     target.addEventListener('drop', handleDrop);
   });
 
+  // Drag events on task items (event delegation)
+  setupDragListeners();
+
   // Later section toggle
   laterHeader.addEventListener('click', toggleLaterSection);
 
@@ -200,7 +319,7 @@ function setupEventListeners() {
     document.documentElement.style.setProperty('--bg-alpha', savedOpacity / 100);
   }
 
-  // Log/Settings panel toggle
+  // Settings panel (bottom sheet)
   logBtn.addEventListener('click', () => {
     logOverlay.classList.add('visible');
   });
@@ -214,12 +333,30 @@ function setupEventListeners() {
       logOverlay.classList.remove('visible');
     }
   });
+
+  // Open log window button (inside settings panel)
+  const openLogWindowBtn = document.getElementById('openLogWindowBtn');
+  if (openLogWindowBtn) {
+    openLogWindowBtn.addEventListener('click', async () => {
+      try {
+        await invoke('open_log_window');
+      } catch (error) {
+        console.error('Failed to open log window:', error);
+      }
+    });
+  }
 }
 
 function setupDragListeners() {
-  document.querySelectorAll('.task-item').forEach(item => {
-    item.addEventListener('dragstart', handleDragStart);
-    item.addEventListener('dragend', handleDragEnd);
+  // Use event delegation for drag events
+  document.addEventListener('dragstart', (e) => {
+    const taskItem = e.target.closest('.task-item');
+    if (taskItem) handleDragStart(e);
+  });
+
+  document.addEventListener('dragend', (e) => {
+    const taskItem = e.target.closest('.task-item');
+    if (taskItem) handleDragEnd(e);
   });
 }
 
@@ -499,72 +636,70 @@ async function toggleLaterSection() {
   const isExpanding = laterSection.classList.contains('collapsed');
 
   if (isExpanding) {
-    // Expand: resize window FIRST
-    const laterTasks = appData.tasks.filter(t => t.status === 'later');
-    const extraHeight = Math.min(laterTasks.length * 40 + 20, 300);
-    const currentHeight = window.innerHeight;
-    await invoke('set_window_size', { width: 320, height: Math.min(600, currentHeight + extraHeight) });
+    // Expand: temporarily set window to max height, then adjust after animation
+    await invoke('set_window_size', { width: 320, height: 600 });
   }
 
   laterSection.classList.toggle('collapsed');
   laterSection.classList.toggle('expanded');
 
-  // Only resize after collapse (expand already sized above)
-  if (!isExpanding) {
-    setTimeout(updateWindowSize, 300);
-  }
+  // After animation completes, calculate exact height
+  setTimeout(updateWindowSize, 250);
 }
 
-// Keyboard Shortcuts
+// Keyboard Shortcuts (using e.code for language-independent handling)
 function handleKeyboardShortcuts(e) {
   const activeTasks = appData.tasks.filter(t => t.status === 'active');
 
   // Ignore if typing in input
   if (document.activeElement === taskInput) {
-    if (e.key === 'Escape') {
+    if (e.code === 'Escape') {
       taskInput.blur();
     }
     return;
   }
 
-  // Cmd/Ctrl shortcuts
+  // Cmd/Ctrl shortcuts (use e.code for language-independent keys)
   if (e.metaKey || e.ctrlKey) {
-    switch (e.key.toLowerCase()) {
-      case 'p':
+    switch (e.code) {
+      case 'KeyP':
         e.preventDefault();
         toggleAlwaysOnTop();
         break;
-      case 'n':
+      case 'KeyN':
         e.preventDefault();
         taskInput.focus();
         break;
-      case 's':
+      case 'KeyS':
         e.preventDefault();
         toggleLogPanel();
         break;
-      case 'z':
+      case 'KeyZ':
         e.preventDefault();
         undoAction();
         break;
-      case '[':
+      case 'BracketLeft':
         e.preventDefault();
         adjustOpacity(-5);
         break;
-      case ']':
+      case 'BracketRight':
         e.preventDefault();
         adjustOpacity(5);
         break;
-      case 'm':
+      case 'KeyM':
         e.preventDefault();
         toggleCompactMode();
         break;
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
+      case 'Digit1':
+      case 'Digit2':
+      case 'Digit3':
+      case 'Digit4':
+      case 'Digit5':
         e.preventDefault();
-        selectTaskByIndex(parseInt(e.key) - 1);
+        if (editingTaskId !== null) {
+          saveEditTask();
+        }
+        selectTaskByIndex(parseInt(e.code.charAt(5)) - 1);
         break;
     }
     return;
@@ -572,39 +707,39 @@ function handleKeyboardShortcuts(e) {
 
   // Non-Cmd shortcuts (only when a task is selected)
   if (selectedTaskId !== null && editingTaskId === null) {
-    switch (e.key.toLowerCase()) {
-      case ' ':
+    switch (e.code) {
+      case 'Space':
         e.preventDefault();
         toggleFocusOnSelected();
         break;
-      case 'd':
+      case 'KeyD':
         e.preventDefault();
         deleteSelectedTask();
         break;
-      case 'l':
+      case 'KeyL':
         e.preventDefault();
         moveSelectedToLater();
         break;
-      case 'i':
+      case 'KeyI':
         e.preventDefault();
         startEditTask(selectedTaskId);
         break;
-      case 'arrowup':
+      case 'ArrowUp':
         e.preventDefault();
         moveSelection(-1);
         break;
-      case 'arrowdown':
+      case 'ArrowDown':
         e.preventDefault();
         moveSelection(1);
         break;
-      case 'escape':
+      case 'Escape':
         e.preventDefault();
         clearSelection();
         break;
     }
   } else {
     // Arrow keys without selection - start selection
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
       e.preventDefault();
       if (activeTasks.length > 0) {
         selectTaskByIndex(0);
