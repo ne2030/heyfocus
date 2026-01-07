@@ -1,11 +1,9 @@
 import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
-import { formatTime } from '../../lib/utils'
 import { IconButton } from '../ui/IconButton'
 import { CloseIcon, FileTextIcon } from '../ui/Icons'
 import { useAppStore } from '../../store/useAppStore'
 import { tauriApi } from '../../lib/tauri'
-import type { LogEventType } from '../../types'
 
 export function LogOverlay() {
   const {
@@ -90,35 +88,7 @@ export function LogOverlay() {
             <div className="stat-label">Events</div>
           </div>
         </div>
-
-        <div className="log-content">
-          {logs.length === 0 ? (
-            <div className="log-empty">No activity yet</div>
-          ) : (
-            [...logs].reverse().map((log, i) => (
-              <div className="log-entry" key={i}>
-                <span className="log-time">{formatTime(log.time)}</span>
-                <span className={cn('log-event', log.event)}>{formatEventType(log.event)}</span>
-                <span className="log-task">{log.task}</span>
-              </div>
-            ))
-          )}
-        </div>
       </div>
     </div>
   )
-}
-
-function formatEventType(event: LogEventType): string {
-  const map: Record<LogEventType, string> = {
-    TASK_CREATED: 'Created',
-    TASK_DONE: 'Done',
-    TASK_DELETED: 'Deleted',
-    TASK_EDITED: 'Edited',
-    MOVE_TO_ACTIVE: 'Active',
-    MOVE_TO_LATER: 'Later',
-    SWITCH_FOCUS: 'Focus',
-    CLEAR_FOCUS: 'Unfocus',
-  }
-  return map[event] || event
 }

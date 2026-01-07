@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { formatTime } from '../../lib/utils'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
@@ -26,7 +27,7 @@ export function LogWindow() {
     // Handle escape key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        window.close()
+        getCurrentWindow().close()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -97,9 +98,9 @@ export function LogWindow() {
         </div>
       )}
 
-      <div className="esc-hint">
-        <kbd>ESC</kbd> to close
-      </div>
+      {/*<div className="esc-hint">*/}
+      {/*  <kbd>ESC</kbd> to close*/}
+      {/*</div>*/}
     </div>
   )
 }

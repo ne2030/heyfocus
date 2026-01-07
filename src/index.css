@@ -1103,7 +1103,7 @@ body {
 
 .esc-hint {
   position: absolute;
-  bottom: 16px;
+  top: 8px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;

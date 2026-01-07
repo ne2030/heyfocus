@@ -7,6 +7,7 @@ export function useWindowResize(mainRef: RefObject<HTMLElement | null>) {
   const resizeTimeoutRef = useRef<number>()
   const rafIdRef = useRef<number | null>(null)
   const prevLaterExpanded = useRef(isLaterExpanded)
+  const prevCompactMode = useRef(isCompactMode)
 
   const updateWindowSize = useCallback(async () => {
     if (!mainRef.current) return
@@ -64,6 +65,27 @@ export function useWindowResize(mainRef: RefObject<HTMLElement | null>) {
       rafIdRef.current = null
     }
   }, [])
+
+  // Handle compact mode transition - update immediately in same frame
+  useEffect(() => {
+    const compactToggled = prevCompactMode.current !== isCompactMode
+    prevCompactMode.current = isCompactMode
+
+    let rafId: number | null = null
+
+    if (compactToggled) {
+      // Use rAF to ensure window size update happens in the same frame as CSS change
+      rafId = requestAnimationFrame(() => {
+        updateWindowSize()
+      })
+    }
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+    }
+  }, [isCompactMode, updateWindowSize])
 
   // Handle Later section transition
   useEffect(() => {
