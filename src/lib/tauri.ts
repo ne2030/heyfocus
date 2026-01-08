@@ -32,4 +32,6 @@ export const tauriApi = {
     invoke<void>('set_window_size', { width, height }),
 
   openLogWindow: () => invoke<void>('open_log_window'),
+
+  openStatsWindow: () => invoke<void>('open_stats_window'),
 }

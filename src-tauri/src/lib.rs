@@ -474,6 +474,35 @@ fn open_log_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_stats_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::WebviewWindowBuilder;
+
+    // Check if stats window already exists
+    if app.get_webview_window("stats").is_some() {
+        // Focus existing window
+        if let Some(window) = app.get_webview_window("stats") {
+            window.set_focus().map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+
+    // Create new stats window
+    let builder = WebviewWindowBuilder::new(&app, "stats", tauri::WebviewUrl::App("index.html#stats".into()))
+        .title("Focus Statistics")
+        .inner_size(1000.0, 820.0)
+        .min_inner_size(800.0, 600.0)
+        .resizable(true)
+        .decorations(true);
+
+    #[cfg(debug_assertions)]
+    let builder = builder.devtools(true);
+
+    builder.build().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 fn save_to_store(app: &tauri::AppHandle, data: &AppData) {
     if let Ok(store) = app.store(STORE_PATH) {
         // Save main data (tasks, next_id, snapshots) - without logs
@@ -552,6 +581,7 @@ pub fn run() {
             edit_task,
             undo_action,
             open_log_window,
+            open_stats_window,
             clear_logs,
         ])
         .run(tauri::generate_context!())

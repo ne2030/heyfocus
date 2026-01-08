@@ -11,13 +11,23 @@ import { LaterSection } from './components/sections/LaterSection'
 import { AddTaskForm } from './components/sections/AddTaskForm'
 import { LogOverlay } from './components/log/LogOverlay'
 import { LogWindow } from './components/log/LogWindow'
+import { StatsWindow } from './components/stats/StatsWindow'
 import { Toast } from './components/Toast'
 
 function App() {
-  const [isLogWindow] = useState(() => window.location.hash === '#log')
+  const [windowType] = useState(() => {
+    const hash = window.location.hash
+    if (hash === '#log') return 'log'
+    if (hash === '#stats') return 'stats'
+    return 'main'
+  })
 
-  if (isLogWindow) {
+  if (windowType === 'log') {
     return <LogWindow />
+  }
+
+  if (windowType === 'stats') {
+    return <StatsWindow />
   }
 
   return <MainApp />

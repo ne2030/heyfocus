@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
 import { IconButton } from '../ui/IconButton'
-import { CloseIcon, FileTextIcon } from '../ui/Icons'
+import { ChartIcon, CloseIcon, FileTextIcon } from '../ui/Icons'
 import { useAppStore } from '../../store/useAppStore'
 import { tauriApi } from '../../lib/tauri'
 
@@ -30,6 +30,11 @@ export function LogOverlay() {
     toggleLogOverlay()
   }
 
+  const handleOpenStatsWindow = async () => {
+    await tauriApi.openStatsWindow()
+    toggleLogOverlay()
+  }
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isLogOverlayVisible) {
@@ -50,6 +55,9 @@ export function LogOverlay() {
         <div className="log-header">
           <span className="log-title">Settings</span>
           <div className="log-actions">
+            <IconButton onClick={handleOpenStatsWindow} title="Open Statistics">
+              <ChartIcon />
+            </IconButton>
             <IconButton onClick={handleOpenLogWindow} title="Open Activity Log">
               <FileTextIcon />
             </IconButton>
