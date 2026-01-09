@@ -1,9 +1,14 @@
+import { useMemo } from 'react'
 import { SlotIndicator } from '../ui/SlotIndicator'
 import { TaskList } from '../task/TaskList'
 import { useAppStore } from '../../store/useAppStore'
 
 export function ActiveSection() {
-  const activeTasks = useAppStore((state) => state.activeTasks())
+  const tasks = useAppStore((state) => state.tasks)
+  const activeTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'active'),
+    [tasks]
+  )
 
   return (
     <section className="section">

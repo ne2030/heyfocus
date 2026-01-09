@@ -1,11 +1,15 @@
-import { useState, DragEvent } from 'react'
+import { useState, useMemo, DragEvent } from 'react'
 import { cn } from '../../lib/utils'
 import { ChevronRightIcon } from '../ui/Icons'
 import { TaskList } from '../task/TaskList'
 import { useAppStore } from '../../store/useAppStore'
 
 export function LaterSection() {
-  const laterTasks = useAppStore((state) => state.laterTasks())
+  const tasks = useAppStore((state) => state.tasks)
+  const laterTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'later'),
+    [tasks]
+  )
   const isLaterExpanded = useAppStore((state) => state.isLaterExpanded)
   const toggleLaterSection = useAppStore((state) => state.toggleLaterSection)
   const draggedTaskId = useAppStore((state) => state.draggedTaskId)
