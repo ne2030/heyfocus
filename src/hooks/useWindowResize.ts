@@ -2,8 +2,10 @@ import { useEffect, useRef, useCallback, RefObject } from 'react'
 import { tauriApi } from '../lib/tauri'
 import { useAppStore } from '../store/useAppStore'
 
+const BASE_WIDTH = 320
+
 export function useWindowResize(mainRef: RefObject<HTMLElement | null>) {
-  const { isCompactMode, isLaterExpanded, tasks } = useAppStore()
+  const { isCompactMode, isLaterExpanded, tasks, scaleFactor } = useAppStore()
   const resizeTimeoutRef = useRef<number>()
   const rafIdRef = useRef<number | null>(null)
   const prevLaterExpanded = useRef(isLaterExpanded)
@@ -43,11 +45,11 @@ export function useWindowResize(mainRef: RefObject<HTMLElement | null>) {
     }
 
     try {
-      await tauriApi.setWindowSize(320, totalHeight)
+      await tauriApi.setWindowSize(BASE_WIDTH * scaleFactor, totalHeight)
     } catch (error) {
       // Silently fail - might not be in Tauri context
     }
-  }, [mainRef, isCompactMode])
+  }, [mainRef, isCompactMode, scaleFactor])
 
   // Start rAF loop for smooth transition tracking
   const startRafLoop = useCallback(() => {

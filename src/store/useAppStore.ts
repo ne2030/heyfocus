@@ -31,6 +31,7 @@ interface AppState {
   isLogOverlayVisible: boolean
   isLaterExpanded: boolean
   opacity: number
+  scaleFactor: number
   toast: ToastState
 
   // Computed getters
@@ -59,6 +60,7 @@ interface AppState {
   toggleLogOverlay: () => void
   toggleLaterSection: () => void
   setOpacity: (value: number) => void
+  setScaleFactor: (value: number) => void
   showToast: (message: string, type?: ToastType) => void
   hideToast: () => void
 
@@ -79,6 +81,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLogOverlayVisible: false,
   isLaterExpanded: false,
   opacity: parseInt(localStorage.getItem(OPACITY_KEY) || '100'),
+  scaleFactor: 1,
   toast: { message: '', type: 'success' as ToastType, visible: false },
 
   // Computed getters
@@ -307,6 +310,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     document.documentElement.style.setProperty('--bg-alpha-active', String(activeAlpha))
     set({ opacity: clamped })
     broadcastOpacity(clamped)
+  },
+
+  setScaleFactor: (value: number) => {
+    set({ scaleFactor: value })
   },
 
   showToast: (message: string, type: ToastType = 'success') => {

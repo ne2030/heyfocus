@@ -5,6 +5,7 @@
   "windows": ["main", "log", "stats"],
   "permissions": [
     "core:default",
+    "core:window:allow-current-monitor",
     "core:window:allow-set-always-on-top",
     "core:window:allow-set-size",
     "core:window:allow-close",

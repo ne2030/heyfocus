@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { currentMonitor } from '@tauri-apps/api/window'
 import { cn } from './lib/utils'
 import { useAppStore } from './store/useAppStore'
 import { onSettingsMessage } from './lib/broadcast'
@@ -34,13 +35,31 @@ function App() {
 }
 
 function MainApp() {
-  const { isCompactMode, loadData, opacity, setSelectedTask } = useAppStore()
+  const { isCompactMode, loadData, opacity, setSelectedTask, setScaleFactor } = useAppStore()
   const mainRef = useRef<HTMLElement>(null)
 
   // Custom hooks
   useKeyboardShortcuts()
   useWindowResize(mainRef)
   const isWindowFocused = useWindowFocus()
+
+  // Detect screen size and adjust scale factor
+  useEffect(() => {
+    const detectScreenSize = async () => {
+      try {
+        const monitor = await currentMonitor()
+        if (monitor) {
+          const logicalWidth = monitor.size.width / monitor.scaleFactor
+          if (logicalWidth <= 1600) {
+            setScaleFactor(0.7)
+          }
+        }
+      } catch {
+        // Silently fail - might not be in Tauri context
+      }
+    }
+    detectScreenSize()
+  }, [setScaleFactor])
 
   useEffect(() => {
     // Load initial data
