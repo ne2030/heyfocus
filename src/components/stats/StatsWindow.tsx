@@ -20,7 +20,7 @@ import { SlotUtilization } from './SlotUtilization'
 
 export function StatsWindow() {
   const { logs: realLogs, tasks: realTasks, loadData } = useAppStore()
-  const [useMockData, setUseMockData] = useState(false)
+  const [useMockData, setUseMockData] = useState(true)
 
   // Use mock data if enabled or if no real data exists
   const logs = useMemo(() => {
