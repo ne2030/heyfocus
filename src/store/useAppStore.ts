@@ -300,7 +300,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setOpacity: (value: number) => {
     const clamped = Math.max(30, Math.min(100, value))
     localStorage.setItem(OPACITY_KEY, String(clamped))
-    document.documentElement.style.setProperty('--bg-alpha', String(clamped / 100))
+    const baseAlpha = clamped / 100
+    // Active section gets half the transparency effect: alpha + (1 - alpha) / 2
+    const activeAlpha = baseAlpha + (1 - baseAlpha) / 2
+    document.documentElement.style.setProperty('--bg-alpha', String(baseAlpha))
+    document.documentElement.style.setProperty('--bg-alpha-active', String(activeAlpha))
     set({ opacity: clamped })
     broadcastOpacity(clamped)
   },

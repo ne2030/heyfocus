@@ -47,12 +47,18 @@ function MainApp() {
     loadData()
 
     // Apply initial opacity
-    document.documentElement.style.setProperty('--bg-alpha', String(opacity / 100))
+    const baseAlpha = opacity / 100
+    const activeAlpha = baseAlpha + (1 - baseAlpha) / 2
+    document.documentElement.style.setProperty('--bg-alpha', String(baseAlpha))
+    document.documentElement.style.setProperty('--bg-alpha-active', String(activeAlpha))
 
     // Listen for settings changes from log window
     onSettingsMessage((message) => {
       if (message.type === 'opacity' && message.value !== null) {
-        document.documentElement.style.setProperty('--bg-alpha', String(message.value / 100))
+        const base = message.value / 100
+        const active = base + (1 - base) / 2
+        document.documentElement.style.setProperty('--bg-alpha', String(base))
+        document.documentElement.style.setProperty('--bg-alpha-active', String(active))
         useAppStore.setState({ opacity: message.value })
       } else if (message.type === 'data-updated') {
         loadData()
