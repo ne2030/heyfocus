@@ -561,11 +561,27 @@ fn load_from_store(app: &tauri::AppHandle) -> AppData {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Code, Modifiers};
+
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let data = load_from_store(&app.handle());
             app.manage(AppState(Mutex::new(data)));
+
+            // Register Ctrl+F global shortcut
+            let shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyF);
+            let app_handle = app.handle().clone();
+
+            app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            }).ok();
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
